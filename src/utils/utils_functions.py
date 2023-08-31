@@ -72,12 +72,59 @@ def plotting_nan_values(data:pd.DataFrame) -> any:
     else:
         # Plotting
         plt.figure(figsize=(14, 6))
-        data[vars_with_nan].isnull().mean().sort_values(ascending=False).plot.bar(color='royalblue', edgecolor='skyblue', lw=0.75)
-        plt.ylabel('Percentage of missing data')
+        data[vars_with_nan].isnull().mean().sort_values(ascending=False).plot.bar(color='crimson', width=0.4, 
+                                                                                  edgecolor='skyblue', lw=0.75)
+        plt.axhline(1/3, color='#E51A4C', ls='dashed', lw=1.5, label='⅓ Missing Values')
+        plt.ylim(0, 1)
+        plt.xlabel('Predictors', fontsize=12)
+        plt.ylabel('Percentage of missing data', fontsize=12)
         plt.xticks(fontsize=10, rotation=25)
         plt.yticks(fontsize=10)
-        plt.grid(True)
+        plt.legend()
+        plt.grid(color='white', linestyle='-', linewidth=0.25)
         plt.tight_layout()
+
+
+# Variables estratificadas por clases
+# Función para obtener la estratificación de clases/target
+def class_distribution(data:pd.DataFrame, target:str) -> any:
+    
+    """
+    Function to get balance by classes
+
+    Args:
+        data: DataFrame
+        target: str
+    
+    Return:
+        Dataviz
+    """
+
+    # Distribución de clases
+    distribucion = data[target].value_counts(normalize=True)
+
+    # Crear figura y ejes
+    fig, ax = plt.subplots(figsize=(10, 4))
+
+    # Ajustar el margen izquierdo de los ejes para separar las barras del eje Y
+    ax.margins(y=0.2)
+
+    # Ajustar la posición de las etiquetas de las barras
+    ax.invert_yaxis()
+
+    # Crear gráfico de barras horizontales con la paleta de colores personalizada
+    ax.barh(distribucion.index, distribucion.values, align='center', color='darkblue',
+            edgecolor='white', height=0.5, linewidth=0.5)
+
+    # Definir título y etiquetas de los ejes
+    ax.set_title('Distribución de clases\n', fontsize=14)
+    ax.set_xlabel('Porcentajes', fontsize=12)
+    ax.set_ylabel(f'{target}'.capitalize(), fontsize=12)
+
+    # Mostrar el gráfico
+    plt.grid(color='white', linestyle='-', linewidth=0.25)
+    plt.tight_layout()
+    plt.show()
 
 
 # Función para obtener la matriz de correlaciones entre los predictores
@@ -132,76 +179,6 @@ def covariance_matrix(data:pd.DataFrame):
     cov_matrix = cov_matrix.applymap(lambda x: 'Positivo' if x > 0 else 'Negativo' if x < 0 else '')
     
     return cov_matrix
-
-
-# Función para graficar la covarianza entre los predictores
-def plotting_covariance(X:pd.DataFrame, continuous:list, n_iter:int) -> any:
-    
-    """
-    Function to plot covariance matrix choosing some random predictors
-
-    Args:
-        X: DataFrame
-        continuous: list
-        n_iter: int
-
-    Return:
-        DataViz
-    """
-
-    # Semilla para efectos de reproducibilidad
-    np.random.seed(n_iter)
-
-    for _ in range(n_iter):
-        # Creamos una figura con tres subfiguras
-        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5))
-        plt.suptitle('Covariance Plots\n', fontsize=15)
-
-        # Seleccionamos dos variables aleatorias del Dataframe
-        var1 = np.random.choice(X[continuous].columns)
-        var2 = np.random.choice(X[continuous].columns)
-        while var1 == var2:
-            var2 = np.random.choice(X[continuous].columns)
-
-        # Graficamos la covarianza en la primera subfigura
-        sns.scatterplot(x=var1, y=var2, data=X[continuous], ax=ax1, color='red', alpha=0.6)
-        plt.xlabel(var1)
-        plt.ylabel(var2)
-        plt.xticks()
-        plt.yticks()
-        ax1.grid(color='white', linestyle='-', linewidth=0.25)
-
-        # Seleccionamos dos nuevas variables aleatorias del Dataframe
-        var1 = np.random.choice(X[continuous].columns)
-        var2 = np.random.choice(X[continuous].columns)
-        while var1 == var2:
-            var2 = np.random.choice(X[continuous].columns)
-
-        # Graficamos la covarianza en la segunda subfigura
-        sns.scatterplot(x=var1, y=var2, data=X[continuous], ax=ax2, color='green', alpha=0.6)
-        plt.xlabel(var1)
-        plt.ylabel(var2)
-        plt.xticks()
-        plt.yticks()
-        ax2.grid(color='white', linestyle='-', linewidth=0.25)
-
-        # Seleccionamos otras dos variables aleatorias del Dataframe
-        var1 = np.random.choice(X[continuous].columns)
-        var2 = np.random.choice(X[continuous].columns)
-        while var1 == var2:
-            var2 = np.random.choice(X[continuous].columns)
-
-        # Graficamos la covarianza en la tercera subfigura
-        sns.scatterplot(x=var1, y=var2, data=X[continuous], ax=ax3, color='blue', alpha=0.6)
-        plt.xlabel(var1)
-        plt.ylabel(var2)
-        plt.xticks()
-        plt.yticks()
-        ax3.grid(color='white', linestyle='-', linewidth=0.25)
-
-        # Mostramos la figura
-        fig.tight_layout()
-        plt.show()
 
 
 # Diagnóstico de variables
@@ -288,6 +265,142 @@ def diagnostic_plots(data:pd.DataFrame, variables:list) -> any:
         plt.grid(color='white', linestyle='-', linewidth=0.25)
         
         fig.tight_layout()
+        
+
+# Función para graficar las variables categóricas
+def categoricals_plot(data:pd.DataFrame, variables:list) -> any:
+    
+    """
+    Function to get distributions graphics into 
+    categoricals and discretes predictors
+
+    Args:
+        data: DataFrame
+        variables: list
+    
+    Return:
+        Dataviz
+    """
+    
+    # Definir el número de filas y columnas para organizar los subplots
+    num_rows = (len(variables) + 1) // 2  # Dividir el número de variables por 2 y redondear hacia arriba
+    num_cols = 2  # Dos columnas de gráficos por fila
+
+    # Crear una figura y ejes para organizar los subplots
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(24, 30))
+    
+    plt.suptitle('Categoricals Plots', fontsize=24, y=0.95)
+    
+    # Asegurarse de que 'axes' sea una matriz 2D incluso si solo hay una variable
+    if len(variables) == 1:
+        axes = axes.reshape(1, -1)
+
+    # Iterar sobre las variables y crear gráficos para cada una
+    for i, var in enumerate(variables):
+        row, col = i // 2, i % 2  # Calcular la fila y columna actual
+
+        # Crear un gráfico de barras en los ejes correspondientes
+        temp_dataframe = pd.Series(data[var].value_counts(normalize=True))
+        temp_dataframe.sort_values(ascending=False).plot.bar(color='royalblue', edgecolor='skyblue', ax=axes[row, col])
+        
+        # Añadir una línea horizontal a 5% para resaltar las categorías poco comunes
+        axes[row, col].axhline(y=0.05, color='#E51A4C', ls='dashed', lw=1.5)
+        axes[row, col].set_ylabel('Porcentajes')
+        axes[row, col].set_xlabel(var)
+        axes[row, col].set_xticklabels(temp_dataframe.index, rotation=25)
+        axes[row, col].grid(color='white', linestyle='-', linewidth=0.25)
+    
+    # Ajustar automáticamente el espaciado entre subplots
+    plt.tight_layout(rect=[0, 0, 1, 0.95])  # El argumento rect controla el espacio para el título superior
+    plt.show()
+
+
+# Función para graficar la covarianza entre los predictores
+def plotting_covariance(X:pd.DataFrame, y:pd.Series, continuous:list, n_iter:int) -> any:
+  
+    """
+    Function to plot covariance matrix choosing some random predictors
+
+    Args:
+        X: DataFrame
+        y: Series
+        continuous: list
+        n_iter: int
+    
+    Return:
+        DataViz
+    """
+    
+    # Semilla para efectos de reproducibilidad
+    np.random.seed(42)
+  
+    for _ in range(n_iter):
+        # Creamos una figura con tres subfiguras
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5))
+        plt.suptitle('Covariance Plots\n', fontsize=14)
+
+        # Seleccionamos dos variables aleatorias del Dataframe
+        var1 = np.random.choice(X[continuous].columns)
+        var2 = np.random.choice(X[continuous].columns)
+        while var1 == var2:
+            var2 = np.random.choice(X[continuous].columns)
+
+        # Graficamos la covarianza en la primera subfigura
+        sns.scatterplot(x=var1, y=var2, data=X[continuous], ax=ax1, hue=y, palette='viridis', alpha=0.6)
+        plt.xlabel(var1)
+        plt.ylabel(var2)
+        plt.xticks()
+        plt.yticks()
+        ax1.grid(color='white', linestyle='-', linewidth=0.25)
+
+        # Seleccionamos dos nuevas variables aleatorias del Dataframe
+        var1 = np.random.choice(X[continuous].columns)
+        var2 = np.random.choice(X[continuous].columns)
+        while var1 == var2:
+            var2 = np.random.choice(X[continuous].columns)
+
+        # Graficamos la covarianza en la segunda subfigura
+        sns.scatterplot(x=var1, y=var2, data=X[continuous], ax=ax2, hue=y, palette='flare', alpha=0.6)
+        plt.xlabel(var1)
+        plt.ylabel(var2)
+        plt.xticks()
+        plt.yticks()
+        ax2.grid(color='white', linestyle='-', linewidth=0.25)
+        
+        # Seleccionamos otras dos variables aleatorias del Dataframe
+        var1 = np.random.choice(X[continuous].columns)
+        var2 = np.random.choice(X[continuous].columns)
+        while var1 == var2:
+            var2 = np.random.choice(X[continuous].columns)
+
+        # Graficamos la covarianza en la tercera subfigura
+        sns.scatterplot(x=var1, y=var2, data=X[continuous], ax=ax3, hue=y, palette='Set1', alpha=0.6)
+        plt.xlabel(var1)
+        plt.ylabel(var2)
+        plt.xticks()
+        plt.yticks()
+        ax3.grid(color='white', linestyle='-', linewidth=0.25)
+        
+        # Mostramos la figura
+        fig.tight_layout()
+
+
+# Función para graficar las categóricas segmentadas por el target
+def categoricals_hue_target(data:pd.DataFrame, variables:list, target:str) -> any:
+    
+    # Graficos de cómo covarian algunas variables con respecto al target
+    paletas = ['rocket', 'mako', 'crest', 'magma', 'viridis', 'flare']
+    np.random.seed(11)
+
+    for var in data[variables]:
+        plt.figure(figsize=(12, 6))
+        plt.title(f'{var} segmentado por {target}\n', fontsize=12)
+        sns.countplot(x=var, hue=target, data=data, edgecolor='white', lw=0.5, palette=np.random.choice(paletas))
+        plt.ylabel('Cantidades')
+        plt.xticks(fontsize=12, rotation=25)
+        plt.yticks(fontsize=12)
+        plt.grid(color='white', linestyle='-', linewidth=0.25)
+        plt.tight_layout()
 
 
 # Test de Normalidad de D’Agostino y Pearson
@@ -347,7 +460,7 @@ def gaussian_transformation(data:pd.DataFrame, variables:list) -> dict:
         'Reciprocal': lambda x: 1/x, 
         'Exp': lambda x: x**2, 
         'Yeo-Johnson': yeo_johnson_transform
-        }
+    }
     
     # Crear un diccionario para almacenar los resultados de las pruebas de normalidad
     results = dict()
