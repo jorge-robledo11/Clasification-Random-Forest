@@ -1,0 +1,14 @@
+name: venv_clasification
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python==3.11.4
+  - jupyter
+  - pandas
+  - matplotlib
+  - seaborn
+  - scikit-learn
+  - empiricaldist
+  - yellowbrick
+  - feature_engine

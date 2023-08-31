@@ -1,0 +1,5 @@
+# Ignorar todos los archivos con extensión .vscode en cualquier directorio
+*.vscode
+
+# Ignorar las carpetas
+__pycache__/
