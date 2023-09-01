@@ -4,7 +4,6 @@ from scipy import stats
 from matplotlib import gridspec
 from IPython.display import display, Latex
 from sklearn.calibration import calibration_curve
-from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import roc_curve, auc
 import pandas as pd
 import numpy as np
@@ -442,10 +441,6 @@ def roc_curve_plot(model, X_val:pd.DataFrame, y_val:pd.Series):
     
     # Copia
     y_val = y_val.copy()
-    
-    # Instanciamos el transformador
-    lb = LabelBinarizer()
-    y_val = lb.fit_transform(y_val)
     
     # Predecir probabilidades de clase para datos de prueba
     y_pred = model.predict_proba(X_val)[:, 1]
