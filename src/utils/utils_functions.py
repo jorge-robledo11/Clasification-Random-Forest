@@ -3,6 +3,9 @@
 from scipy import stats
 from matplotlib import gridspec
 from IPython.display import display, Latex
+from sklearn.calibration import calibration_curve
+from sklearn.preprocessing import LabelBinarizer
+from sklearn.metrics import roc_curve, auc
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -301,7 +304,7 @@ def categoricals_plot(data:pd.DataFrame, variables:list) -> any:
 
         # Crear un gráfico de barras en los ejes correspondientes
         temp_dataframe = pd.Series(data[var].value_counts(normalize=True))
-        temp_dataframe.sort_values(ascending=False).plot.bar(color='royalblue', edgecolor='skyblue', ax=axes[row, col])
+        temp_dataframe.sort_values(ascending=False).plot.bar(color='#f19900', edgecolor='skyblue', ax=axes[row, col])
         
         # Añadir una línea horizontal a 5% para resaltar las categorías poco comunes
         axes[row, col].axhline(y=0.05, color='#E51A4C', ls='dashed', lw=1.5)
@@ -311,7 +314,7 @@ def categoricals_plot(data:pd.DataFrame, variables:list) -> any:
         axes[row, col].grid(color='white', linestyle='-', linewidth=0.25)
     
     # Ajustar automáticamente el espaciado entre subplots
-    plt.tight_layout(rect=[0, 0, 1, 0.95])  # El argumento rect controla el espacio para el título superior
+    plt.tight_layout(rect=[0, 0, 1, 0.95], pad=0.2)  # El argumento rect controla el espacio para el título superior
     plt.show()
 
 
@@ -432,117 +435,63 @@ def normality_test(data, variables):
 
     plt.tight_layout(pad=3)
     plt.show()
-
-
-# Definir la transformación de Yeo-Johnson
-def yeo_johnson_transform(x):
-    y = np.where(x >= 0, x + 1, 1 / (1 - x))
-    y = np.sign(y) * (np.abs(y) ** 0.5)
-    return y
-
-def gaussian_transformation(data:pd.DataFrame, variables:list) -> dict:
     
-    """
-    Function to get Gaussian transformations of the variables
 
-    Args:
-        data: DataFrame
-        variables: list
+# Curva ROC
+def roc_curve_plot(model, X_val:pd.DataFrame, y_val:pd.Series):
     
-    Return:
-        results: dict
-    """
+    # Copia
+    y_val = y_val.copy()
     
-    # Definir las transformaciones gaussianas a utilizar
-    transformaciones_gaussianas = {
-        'Log': np.log,
-        'Sqrt': np.sqrt, 
-        'Reciprocal': lambda x: 1/x, 
-        'Exp': lambda x: x**2, 
-        'Yeo-Johnson': yeo_johnson_transform
-    }
+    # Instanciamos el transformador
+    lb = LabelBinarizer()
+    y_val = lb.fit_transform(y_val)
     
-    # Crear un diccionario para almacenar los resultados de las pruebas de normalidad
-    results = dict()
+    # Predecir probabilidades de clase para datos de prueba
+    y_pred = model.predict_proba(X_val)[:, 1]
 
-    # Iterar a través de las variables y las transformaciones
-    for var in data[variables].columns:
-        mejores_p_value = 0
-        mejor_transformacion = None
-        
-        for nombre_transformacion, transformacion in transformaciones_gaussianas.items():
-            # Aplicar la transformación a la columna
-            variable_transformada = transformacion(data[var])
-            
-            # Calcular el p-value de la prueba de normalidad
-            p_value = stats.normaltest(variable_transformada)[1]
-            
-            # Actualizar el mejor p-value y transformación si es necesario
-            if p_value > mejores_p_value:
-                mejores_p_value = p_value
-                mejor_transformacion = nombre_transformacion
-        
-        # Almacenar el resultado en el diccionario
-        results[var] = mejor_transformacion
-        
-    return results
+    # Calcular curva ROC y área bajo la curva
+    fpr, tpr, thresholds = roc_curve(y_val, y_pred)
+    roc_auc = auc(fpr, tpr)
+
+    # Crear gráfico de curva ROC
+    plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % roc_auc, color='dodgerblue')
+    plt.plot([0, 1], [0, 1], 'k--', color='crimson')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic\n')
+    plt.legend(loc='lower right')
+    plt.grid(color='white', linestyle='-', linewidth=0.25)
+    plt.tight_layout()
 
 
-# Graficar la comparativa entre las variables originales y su respectiva transformación
-def graficar_transformaciones(data:pd.DataFrame, continuous:list, transformacion:dict) -> any:
+# Curva de calibración
+def plot_calibration_curve(y_true, probs, bins, model):
+
+    fraction_of_positives, mean_predicted_value = calibration_curve(y_true, probs, n_bins=bins, 
+                                                                    strategy='uniform')
+    max_val = max(mean_predicted_value)
     
-    """
-    Function to plot compare Gaussian transformations of the variables and their original state
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    plt.subplot(1, 2, 1)
+    plt.plot(mean_predicted_value, fraction_of_positives, label=type(model).__name__, 
+             c='limegreen')
+    plt.plot(np.linspace(0, max_val, bins), np.linspace(0, max_val, bins),
+             linestyle='--', color='crimson', label='Perfect calibration')
+    plt.xlabel('Probability Predictions')
+    plt.ylabel('Fraction of positive examples')
+    plt.title('Calibration Curve\n')
+    plt.legend(loc='upper left')
+    plt.grid(color='white', linestyle='-', linewidth=0.25)
 
-    Args:
-        data: DataFrame
-        variables: list
+    plt.subplot(1, 2, 2)
+    plt.hist(probs, range=(0, 1), bins=bins, density=False, stacked=True, alpha=0.3, 
+             color='xkcd:dark cyan', edgecolor='white', lw=0.5)
+    plt.xlabel('Probability Predictions')
+    plt.ylabel('Fraction of examples')
+    plt.title('Density\n')
+    plt.grid(color='white', linestyle='-', linewidth=0.25)
+    plt.tight_layout()
     
-    Return:
-        Dataviz
-    """
-    
-    # Definir las transformaciones gaussianas a utilizar
-    transformaciones_gaussianas = {
-        'Log': np.log,
-        'Sqrt': np.sqrt, 
-        'Reciprocal': lambda x: 1/x, 
-        'Exp': lambda x: x**2, 
-        'Yeo-Johnson': yeo_johnson_transform
-        }
-    
-    data = data.copy()
-    data = data[continuous]
-    
-    for variable, transformacion_name in transformacion.items():
-        # Obtener datos originales
-        data_original = data[variable]
-        
-        # Obtener la transformación correspondiente
-        transformacion_func = transformaciones_gaussianas.get(transformacion_name)
-        
-        # Aplicar transformación
-        data_transformada = transformacion_func(data_original)
-
-        # Crear figura con 2 subplots
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
-
-        # Graficar histograma datos originales 
-        hist_kws = {'color': 'royalblue', 'lw': 0.5}
-        sns.histplot(data_original, ax=ax1, kde=True, bins=50, **hist_kws)
-        ax1.set_title('Original')
-        ax1.grid(color='white', linestyle='-', linewidth=0.25)
-
-        # Graficar histograma datos transformados
-        sns.histplot(data_transformada, ax=ax2, kde=True, bins=50, **hist_kws)
-        ax2.set_title(f'{transformacion_name}')
-        ax2.grid(color='white', linestyle='-', linewidth=0.25)
-        
-        # Cambiar color del KDE en ambos gráficos
-        for ax in [ax1, ax2]:
-            for line in ax.lines:
-                line.set_color('crimson')
-
-        # Mostrar figura
-        plt.tight_layout()
-        plt.show()
