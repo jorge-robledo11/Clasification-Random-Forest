@@ -292,7 +292,7 @@ def categoricals_plot(data:pd.DataFrame, variables:list) -> any:
     # Crear una figura y ejes para organizar los subplots
     fig, axes = plt.subplots(num_rows, num_cols, figsize=(24, 30))
     
-    plt.suptitle('Categoricals Plots', fontsize=24, y=0.95)
+    plt.suptitle('Categoricals Plots\n', fontsize=24, y=0.95)
     
     # Asegurarse de que 'axes' sea una matriz 2D incluso si solo hay una variable
     if len(variables) == 1:

@@ -10,5 +10,5 @@ dependencies:
   - seaborn
   - scikit-learn
   - empiricaldist
-  - yellowbrick
   - feature_engine
+  - imbalanced-learn
