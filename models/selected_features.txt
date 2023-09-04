@@ -3,3 +3,4 @@ education-num
 marital-status
 occupation
 relationship
+hours-per-week

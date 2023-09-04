@@ -5,6 +5,7 @@ from matplotlib import gridspec
 from IPython.display import display, Latex
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import confusion_matrix
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -489,4 +490,29 @@ def plot_calibration_curve(y_true, probs, bins, model):
     plt.title('Density\n')
     plt.grid(color='white', linestyle='-', linewidth=0.25)
     plt.tight_layout()
+
+
+# Función de matriz de confusión
+def cnf_matrix(y_true:pd.DataFrame, y_pred:pd.Series, threshold=0.5):
     
+    sns.set_theme(context='notebook', style=plt.style.use('dark_background'))
+    y_true = y_true.to_numpy().reshape(-1)
+    y_pred = np.where(y_pred > threshold, 1, 0)
+    
+    cm = confusion_matrix(y_true, y_pred)
+
+    # Calculamos TP, FN, FP, TN a partir de la matriz de confusión
+    tn, fp, fn, tp = cm.ravel()
+    
+    # Creamos la figura y los ejes del heatmap con un tamaño adecuado
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.set(font_scale=1.2)
+
+    # Creamos la matriz de confusión
+    sns.heatmap([[tp, fp], [fn, tn]], annot=True, cmap='magma', fmt='g', square=True, linewidths=1,
+                yticklabels=['Verdaderos Positivos', ''], 
+                xticklabels=['Falsos Negativos', 'Verdaderos Negativos'], ax=ax)
+                    
+    # Configura los ejes del heatmap
+    ax.set_title(f'Confusion Matrix\n', fontsize=14)
+    plt.tight_layout()
